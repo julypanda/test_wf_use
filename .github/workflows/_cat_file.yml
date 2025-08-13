@@ -1,0 +1,11 @@
+name: cat file
+
+on:
+  workflow_call:
+
+jobs:
+  cat:
+    runs-on: ubuntu-latest
+    steps:
+        - name: cat file
+          run: cat README.md

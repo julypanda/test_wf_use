@@ -1,0 +1,14 @@
+name: Build
+
+on:
+  push:
+    branches: [master, develop, release]
+  pull_request:
+    branches: [master, develop, release]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+        - name: cat file
+          uses: ./github/workflows/_cat_file.yml
