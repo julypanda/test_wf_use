@@ -1,0 +1,115 @@
+是的，如果你将 `_cat_file.yml` 改造成一个真正的 GitHub Action（而不是工作流），并放在 `action` 目录中，就可以在 step 中直接调用。以下是完整解决方案：
+
+### 1. 创建 Action 目录结构
+```bash
+.github/
+├── actions/
+│   └── cat-file/          # Action 名称
+│       ├── action.yml     # Action 元数据文件
+│       └── entrypoint.sh  # 执行脚本
+└── workflows/
+    └── your-workflow.yml  # 主工作流
+```
+
+### 2. 创建 Action 元数据文件 (action.yml)
+
+```yaml
+name: 'Cat File Action'
+description: 'Outputs the content of a specified file'
+inputs:
+  file-path:
+    description: 'Path to the file to display'
+    required: true
+    default: 'README.md'
+runs:
+  using: 'composite'
+  steps:
+    - name: Display file content
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.file-path }}" ]; then
+          cat "${{ inputs.file-path }}"
+        else
+          echo "File not found: ${{ inputs.file-path }}"
+          exit 1
+        fi
+```
+
+### 3. 在 step 中调用 Action
+
+```yaml
+jobs:
+  example-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Show important file
+        uses: ./.github/actions/cat-file
+        with:
+          file-path: 'src/config.json'
+```
+
+### 4. 完整工作流示例
+
+```yaml
+name: Main Workflow
+
+on: [push]
+
+jobs:
+  process-files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Show package.json
+        uses: ./.github/actions/cat-file
+        with:
+          file-path: 'package.json'
+          
+      - name: Show config file
+        uses: ./.github/actions/cat-file
+        with:
+          file-path: 'src/config.yml'
+```
+
+### 关键点说明：
+
+1. **目录结构**：
+   - Action 必须放在 `/.github/actions/` 或 `/actions/` 目录下
+   - 每个 Action 需要自己的子目录（如 `cat-file`）
+
+2. **元数据文件**：
+   - 必须命名为 `action.yml` 或 `action.yaml`
+   - 使用 `composite` 运行方式允许组合多个步骤
+
+3. **路径引用**：
+   - 使用相对路径 `./.github/actions/cat-file`
+   - 不需要文件扩展名
+
+4. **与可复用工作流的区别**：
+   ```mermaid
+   graph LR
+   A[调用方式] --> B[Step 层级调用]
+   A --> C[Job 层级调用]
+   B --> D[Action<br>/.github/actions/...]
+   C --> E[Workflow<br>/.github/workflows/...]
+   ```
+
+### 为什么这样可行？
+
+GitHub Actions 区分两种类型的复用：
+1. **Action**：单个可重用步骤
+   - 放在任意目录（推荐 `actions/`）
+   - 需要 `action.yml` 定义
+   - 在 `steps` 中调用
+
+2. **可复用工作流**：完整工作流
+   - 放在 `.github/workflows/`
+   - 使用 `workflow_call` 触发器
+   - 在 `jobs` 中调用
+
+你的原始需求是 "在 step 中调用"，因此改造为 Action 是正确的解决方案。
